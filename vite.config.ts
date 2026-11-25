@@ -5,8 +5,24 @@ import path from 'path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+function resolveBasePath(): string {
+  const explicit = process.env.VITE_BASE_PATH;
+  if (explicit) {
+    return explicit.endsWith('/') ? explicit : `${explicit}/`;
+  }
+  if (process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_REPOSITORY) {
+    const [owner = '', repo = ''] = process.env.GITHUB_REPOSITORY.split('/');
+    if (repo && repo.toLowerCase() !== `${owner.toLowerCase()}.github.io`) {
+      return `/${repo}/`;
+    }
+  }
+  return '/';
+}
+
 export default defineConfig(() => {
+  const base = resolveBasePath();
   return {
+    base,
     plugins: [
       react(),
       tailwindcss(),
@@ -14,7 +30,7 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
         manifest: {
-          id: '/',
+          id: base,
           name: 'Klötzchen-Abenteuer',
           short_name: 'Klötzchen',
           description: 'Mathe-Lernspiel für die 2. Klasse (Bayern) mit Handschrifteingabe und hüpfendem Tiergefährten.',
@@ -22,24 +38,24 @@ export default defineConfig(() => {
           background_color: '#F4F6F9',
           display: 'fullscreen',
           orientation: 'any',
-          start_url: '/',
-          scope: '/',
+          start_url: base,
+          scope: base,
           lang: 'de',
           icons: [
             {
-              src: '/pwa-192x192.png',
+              src: `${base}pwa-192x192.png`,
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-512x512.png',
+              src: `${base}pwa-512x512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-maskable-512x512.png',
+              src: `${base}pwa-maskable-512x512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',
@@ -48,6 +64,7 @@ export default defineConfig(() => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,webp,svg,webmanifest}'],
+          globIgnores: ['assets/aistudio/**', 'src/**'],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           cleanupOutdatedCaches: true,
           clientsClaim: true,
@@ -74,18 +91,22 @@ export default defineConfig(() => {
         },
       }),
       {
-        name: 'copy-unbundled-src-assets',
+        name: 'prepare-github-pages-dist',
         apply: 'build',
         closeBundle(error?: Error): void {
           if (error) {
             return;
           }
           const distDir = path.resolve(__dirname, 'dist');
-          const srcAssets = path.resolve(__dirname, 'src/assets');
-          const distAssets = path.resolve(distDir, 'src/assets');
-          if (fs.existsSync(distDir) && fs.existsSync(srcAssets)) {
-            fs.cpSync(srcAssets, distAssets, { recursive: true, force: true });
+          if (!fs.existsSync(distDir)) {
+            return;
           }
+          const indexHtml = path.join(distDir, 'index.html');
+          const fallback404 = path.join(distDir, '404.html');
+          if (fs.existsSync(indexHtml)) {
+            fs.copyFileSync(indexHtml, fallback404);
+          }
+          fs.writeFileSync(path.join(distDir, '.nojekyll'), '');
         },
       },
     ],

@@ -23,6 +23,19 @@ Für Service Worker und PWA-Installation wird eine **HTTPS-Verbindung** benötig
 - **Statisches Hosting:** Den Ordner `dist/` auf einen beliebigen HTTPS-Webspace (z. B. Netlify, GitHub Pages, Cloudflare Pages, eigener Webserver oder Fritz!Box-NAS mit lokalem Zertifikat) hochladen.
 - **Keine Laufzeit-Abhängigkeiten:** Es werden keinerlei CDNs, externe Schriften, Analytics oder Cloud-APIs verwendet. Nach dem ersten Laden läuft die App dauerhaft offline.
 
+### Veröffentlichen als GitHub Page (automatisch per GitHub Actions)
+
+Im Repository liegt bereits der fertige Workflow `.github/workflows/deploy-pages.yml`. Er erkennt den Repository-Namen automatisch und passt alle Pfade (inklusive PWA-Manifest, Service Worker und Sticker-GIFs) für `https://<benutzername>.github.io/<repo-name>/` an.
+
+1. Öffne dein Repository auf **GitHub**.
+2. Gehe oben auf **Settings** → links auf **Pages**.
+3. Wähle unter **Build and deployment → Source** den Eintrag **GitHub Actions**.
+4. Stoße einen Commit auf `main` (oder `master`) an – oder starte den Workflow unter **Actions → Deploy Klötzchen-Abenteuer to GitHub Pages → Run workflow**.
+5. Nach 1–2 Minuten ist die App unter der angezeigten `github.io`-HTTPS-Adresse direkt auf Tablet, Handy und PC spielbar und als Vollbild-PWA installierbar.
+
+*(Falls du `dist/` manuell für eine Projektseite baust, übergebe den Unterpfad beim Build: `VITE_BASE_PATH=/dein-repo-name/ npm run build`.)*
+
+
 ## Update-Verhalten des Service Workers
 
 - Der Service Worker (`public/sw.js`) speichert alle App-Dateien lokal für den Offline-Start zwischen.

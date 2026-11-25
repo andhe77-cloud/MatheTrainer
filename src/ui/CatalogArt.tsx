@@ -160,9 +160,15 @@ export const StickerArt: React.FC<{ sticker: AlbumSticker; locked?: boolean; siz
 }) => {
   const [imgFailed, setImgFailed] = React.useState(false);
 
+  const resolvedSrc = React.useMemo(() => {
+    const base = import.meta.env.BASE_URL || '/';
+    const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+    return `${normalizedBase}${sticker.imageUrl.replace(/^\/+/, '')}`;
+  }, [sticker.imageUrl]);
+
   React.useEffect(() => {
     setImgFailed(false);
-  }, [sticker.imageUrl]);
+  }, [resolvedSrc]);
 
   return (
     <div
@@ -173,7 +179,7 @@ export const StickerArt: React.FC<{ sticker: AlbumSticker; locked?: boolean; siz
     >
       {!imgFailed ? (
         <img
-          src={sticker.imageUrl}
+          src={resolvedSrc}
           alt={sticker.title}
           loading="lazy"
           className="w-full h-full object-contain rounded-xl"
