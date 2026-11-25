@@ -1,0 +1,6 @@
+{
+  "name": "Klötzchen-Abenteuer",
+  "description": "Offline-fähiges Mathe-Lernspiel für die 2. Klasse (Bayern) mit Handschrifteingabe, hüpfendem Tiergefährten und kindgerechter Fehlerdiagnose.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

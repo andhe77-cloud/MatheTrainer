@@ -1,0 +1,127 @@
+@import "tailwindcss";
+@custom-variant short (@media (max-height: 560px));
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+    font-family: "SF Pro Rounded", "Quicksand", "Nunito", "Segoe UI Rounded", "Trebuchet MS", "DejaVu Sans", system-ui, sans-serif;
+    overscroll-behavior: contain;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@keyframes mascot-idle {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-4px) scaleY(1.02); }
+}
+
+@keyframes mascot-hop {
+  0% { transform: translateY(0) scaleX(1.08) scaleY(0.90); }
+  35% { transform: translateY(-22px) scaleX(0.94) scaleY(1.08); }
+  75% { transform: translateY(0) scaleX(1.10) scaleY(0.88); }
+  100% { transform: translateY(0) scaleX(1) scaleY(1); }
+}
+
+@keyframes mascot-happy {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  25% { transform: translateY(-14px) rotate(-4deg) scale(1.06); }
+  75% { transform: translateY(-10px) rotate(4deg) scale(1.06); }
+}
+
+@keyframes mascot-hm {
+  0%, 100% { transform: rotate(0deg); }
+  40% { transform: rotate(-7deg) translateX(-2px); }
+  70% { transform: rotate(-5deg) translateX(-2px); }
+}
+
+@keyframes mascot-yawn {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleX(0.96) scaleY(1.05); }
+}
+
+@keyframes mascot-nod {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(5px); }
+}
+
+.animate-mascot-idle {
+  animation: mascot-idle 2.6s ease-in-out infinite;
+}
+
+.animate-mascot-hop {
+  animation: mascot-hop 0.52s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.animate-mascot-happy {
+  animation: mascot-happy 0.7s ease-in-out infinite;
+}
+
+.animate-mascot-hm {
+  animation: mascot-hm 1.8s ease-in-out infinite;
+}
+
+.animate-mascot-yawn {
+  animation: mascot-yawn 2.2s ease-in-out infinite;
+}
+
+.animate-mascot-nod {
+  animation: mascot-nod 0.45s ease-in-out 2;
+}
+
+@keyframes plant-sway {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50% { transform: rotate(2.5deg); }
+}
+
+@keyframes chest-wobble {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  20% { transform: rotate(-6deg) scale(1.04); }
+  40% { transform: rotate(6deg) scale(1.06); }
+  60% { transform: rotate(-5deg) scale(1.08); }
+  80% { transform: rotate(4deg) scale(1.04); }
+}
+
+@keyframes sticker-jump-out {
+  0% { transform: translateY(68px) scale(0.28) rotate(-14deg); opacity: 0; }
+  45% { transform: translateY(-22px) scale(1.18) rotate(5deg); opacity: 1; }
+  72% { transform: translateY(4px) scale(0.95) rotate(-2deg); opacity: 1; }
+  100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+}
+
+.animate-plant-sway {
+  transform-origin: bottom center;
+  animation: plant-sway 3.2s ease-in-out infinite;
+}
+
+.animate-chest-wobble {
+  animation: chest-wobble 0.65s ease-in-out infinite;
+}
+
+.animate-sticker-jump {
+  animation: sticker-jump-out 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-mascot-idle,
+  .animate-mascot-hop,
+  .animate-mascot-happy,
+  .animate-mascot-hm,
+  .animate-mascot-yawn,
+  .animate-mascot-nod,
+  .animate-plant-sway,
+  .animate-chest-wobble,
+  .animate-sticker-jump {
+    animation: none !important;
+  }
+}
