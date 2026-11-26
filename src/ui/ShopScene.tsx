@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Heart } from 'lucide-react';
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Compass, Heart, Play } from 'lucide-react';
 import { CATALOG_ITEMS, findCatalogItem, type CatalogCategory } from '../content/catalog';
 import { soundEngine } from '../core/audio';
 import type { AppStateV1 } from '../core/types';
@@ -12,6 +12,9 @@ interface ShopSceneProps {
   onBuyItem: (itemId: string) => void;
   onToggleWishlist: (itemId: string) => void;
   onEquipAccessory: (slot: 'hat' | 'cape' | 'backpack' | 'hopEffect', itemId: string | null) => void;
+  onPlayMinigame?: (catalogItemId: string) => void;
+  dailyDone?: boolean;
+  initialTabId?: string;
   onBack: () => void;
 }
 
@@ -19,6 +22,7 @@ const SHOP_TABS: Array<{ id: string; label: string; cats: CatalogCategory[] }> =
   { id: 'bau', label: 'Bauklötze & Pflanzen', cats: ['baustein', 'pflanze', 'deko'] },
   { id: 'welt', label: 'Tiere, Häuser & Fahrzeuge', cats: ['tier', 'gebaeude', 'fahrzeug'] },
   { id: 'tier', label: 'Tier-Kleidung & Effekte', cats: ['hat', 'cape', 'backpack', 'hopEffect'] },
+  { id: 'spiele', label: 'Minispiele', cats: ['minigame'] },
 ];
 
 export const ShopScene: React.FC<ShopSceneProps> = ({
@@ -26,10 +30,17 @@ export const ShopScene: React.FC<ShopSceneProps> = ({
   onBuyItem,
   onToggleWishlist,
   onEquipAccessory,
+  onPlayMinigame,
+  dailyDone = true,
+  initialTabId,
   onBack,
 }) => {
   const coins = state.profile?.coins ?? 0;
-  const [tabIdx, setTabIdx] = useState(0);
+  const [tabIdx, setTabIdx] = useState(() => {
+    if (!initialTabId) return 0;
+    const found = SHOP_TABS.findIndex((t) => t.id === initialTabId);
+    return found >= 0 ? found : 0;
+  });
   const [page, setPage] = useState(0);
 
   const activeTab = SHOP_TABS[tabIdx];
@@ -141,8 +152,43 @@ export const ShopScene: React.FC<ShopSceneProps> = ({
                 <CatalogItemArt item={item} size={52} />
               </div>
 
+              {item.category === 'minigame' && (
+                <p className="text-[11px] text-slate-600 leading-snug text-center line-clamp-2 short:hidden">
+                  {item.description}
+                </p>
+              )}
+
               {owned ? (
-                equipSlot ? (
+                item.category === 'minigame' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (dailyDone) {
+                        soundEngine.playSuccessChime();
+                      } else {
+                        soundEngine.playUiClick();
+                      }
+                      onPlayMinigame?.(item.id);
+                    }}
+                    className={`min-h-[42px] short:min-h-[34px] w-full rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 ${
+                      dailyDone
+                        ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_3px_0_#4338CA]'
+                        : 'bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-950'
+                    }`}
+                  >
+                    {dailyDone ? (
+                      <>
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>Jetzt spielen!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Compass className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Erst Tagesaufgabe</span>
+                      </>
+                    )}
+                  </button>
+                ) : equipSlot ? (
                   <button
                     type="button"
                     onClick={() => {

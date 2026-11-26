@@ -126,7 +126,7 @@ export const HubScene: React.FC<HubSceneProps> = ({
   const placeableItems = state.inventory
     .map((id) => findCatalogItem(id))
     .filter((it): it is NonNullable<typeof it> =>
-      Boolean(it && !['hat', 'cape', 'backpack', 'hopEffect'].includes(it.category))
+      Boolean(it && !['hat', 'cape', 'backpack', 'hopEffect', 'minigame'].includes(it.category))
     );
 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(

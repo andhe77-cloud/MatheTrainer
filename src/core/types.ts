@@ -12,6 +12,7 @@ export type SceneId =
   | 'hub'
   | 'shop'
   | 'album'
+  | 'minigames'
   | 'practice'
   | 'parent';
 

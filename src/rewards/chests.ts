@@ -122,7 +122,7 @@ export function openChestWithProtection(
   const maxDropPrice = tier === 'gold' ? 75 : tier === 'iron' ? 35 : 0;
   if (maxDropPrice > 0) {
     const unownedItems = CATALOG_ITEMS.filter(
-      (it) => !ownedItems.has(it.id) && it.price <= maxDropPrice
+      (it) => it.category !== 'minigame' && !ownedItems.has(it.id) && it.price <= maxDropPrice
     );
     if (unownedItems.length > 0 && (awardedSticker === null || tier === 'gold')) {
       awardedItem = rng.pick(unownedItems);

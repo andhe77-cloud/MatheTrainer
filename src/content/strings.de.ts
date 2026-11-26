@@ -87,6 +87,7 @@ export const STRINGS_DE = {
     hubButton: 'Bau-Insel',
     albumButton: 'Album',
     shopButton: 'Laden',
+    minigamesButton: 'Minispiele',
     testbedButton: 'Schreib-Labor',
     parentHoldHint: 'Eltern (3 Sek. halten)',
     parentTapFallback: 'Elternbereich',

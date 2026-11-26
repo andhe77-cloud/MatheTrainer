@@ -3,6 +3,7 @@ import {
   BookOpen,
   Compass,
   FlaskConical,
+  Gamepad2,
   Hammer,
   Lock,
   Megaphone,
@@ -16,13 +17,14 @@ import {
   VolumeX,
   X,
 } from 'lucide-react';
+import { MINIGAMES } from '../content/catalog';
 import { APP_CONFIG } from '../content/config';
 import { STRINGS_DE } from '../content/strings.de';
 import { soundEngine } from '../core/audio';
 import { createRng } from '../core/rng';
 import type { AppStateV1, MascotMood, SceneId } from '../core/types';
 import type { ActiveErrorPattern } from '../diagnostics/patterns';
-import { calculateFleissbaumProgress } from '../rewards/economy';
+import { calculateFleissbaumProgress, isDailyAdventureCompletedToday } from '../rewards/economy';
 import { FullscreenButton, PWAInstallButton } from './DesignSystem';
 import { Mascot } from './Mascot';
 import { WorldBackdrop } from './WorldBackdrop';
@@ -123,6 +125,7 @@ export const HomeMapScene: React.FC<HomeMapSceneProps> = ({
     () => calculateFleissbaumProgress(profile.activeDays),
     [profile.activeDays]
   );
+  const dailyDone = isDailyAdventureCompletedToday(state.dailyAdventureDate);
 
   const world1Progress = state.worldProgress[1] ?? { unlockedLevel: 1, starsByLevel: {} };
 
@@ -362,16 +365,26 @@ export const HomeMapScene: React.FC<HomeMapSceneProps> = ({
                 soundEngine.playSuccessChime();
                 onStartDailyAdventure();
               }}
-              className="min-h-[44px] sm:min-h-[52px] short:min-h-[38px] px-3 sm:px-4 short:px-2.5 py-1.5 rounded-2xl border-2 border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-950 font-extrabold text-xs sm:text-sm short:text-xs shadow-[0_3px_0_#F59E0B] flex items-center gap-1.5 whitespace-nowrap"
+              className={`min-h-[44px] sm:min-h-[52px] short:min-h-[38px] px-3 sm:px-4 short:px-2.5 py-1.5 rounded-2xl border-2 font-extrabold text-xs sm:text-sm short:text-xs flex items-center gap-1.5 whitespace-nowrap ${
+                dailyDone
+                  ? 'border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 shadow-[0_3px_0_#10B981]'
+                  : 'border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-950 shadow-[0_3px_0_#F59E0B]'
+              }`}
             >
-              <Compass className="w-4 h-4 text-amber-600" />
-              <span>{STRINGS_DE.map.dailyAdventureTitle}</span>
+              <Compass className={`w-4 h-4 ${dailyDone ? 'text-emerald-600' : 'text-amber-600'}`} />
+              <span>{STRINGS_DE.map.dailyAdventureTitle}{dailyDone ? ' ✓' : ''}</span>
             </button>
 
             {[
               { id: 'hub' as SceneId, label: STRINGS_DE.map.hubButton, icon: Hammer, color: 'text-emerald-600' },
               { id: 'album' as SceneId, label: STRINGS_DE.map.albumButton, icon: BookOpen, color: 'text-purple-600' },
               { id: 'shop' as SceneId, label: STRINGS_DE.map.shopButton, icon: ShoppingBag, color: 'text-rose-600' },
+              {
+                id: 'minigames' as SceneId,
+                label: `${STRINGS_DE.map.minigamesButton} (${MINIGAMES.filter((g) => state.inventory.includes(g.catalogItemId)).length}/${MINIGAMES.length})${dailyDone ? '' : ' 🔒'}`,
+                icon: Gamepad2,
+                color: 'text-indigo-600',
+              },
               { id: 'testbed' as SceneId, label: STRINGS_DE.map.testbedButton, icon: FlaskConical, color: 'text-blue-600' },
             ].map((item) => {
               const Icon = item.icon;

@@ -74,3 +74,14 @@ export function calculateFleissbaumProgress(activeDays: string[]): {
           : 'Frischer Setzling';
   return { daysCount, leaves, blossoms, stageLabel };
 }
+
+export function getTodayIso(date: Date = new Date()): string {
+  return date.toISOString().slice(0, 10);
+}
+
+export function isDailyAdventureCompletedToday(
+  dailyAdventureDate: string | null | undefined,
+  todayIso: string = getTodayIso()
+): boolean {
+  return Boolean(dailyAdventureDate && dailyAdventureDate === todayIso);
+}

@@ -29,7 +29,13 @@ import { HandwritingTestbed } from './input/HandwritingTestbed';
 import { WritingTrainer } from './input/WritingTrainer';
 import { applySkillUpdate } from './rewards/adaptive';
 import { openChestWithProtection, type ChestRewardOutcome } from './rewards/chests';
-import { applyCoinDelta, getChestTierForStars, purchaseCatalogItem } from './rewards/economy';
+import {
+  applyCoinDelta,
+  getChestTierForStars,
+  getTodayIso,
+  isDailyAdventureCompletedToday,
+  purchaseCatalogItem,
+} from './rewards/economy';
 import { generateDailyAdventureTasks } from './tasks/dailyAdventure';
 import type { MathTask } from './tasks/types';
 import { AlbumScene } from './ui/AlbumScene';
@@ -38,14 +44,11 @@ import { OfflineIndicator } from './ui/DesignSystem';
 import { HomeMapScene } from './ui/HomeMapScene';
 import { HubScene } from './ui/HubScene';
 import { LevelScene } from './ui/LevelScene';
+import { MinigamesScene } from './ui/MinigamesScene';
 import { ParentScene } from './ui/ParentScene';
 import { PracticeScene } from './ui/PracticeScene';
 import { ShopScene } from './ui/ShopScene';
 import { WelcomeScene } from './ui/WelcomeScene';
-
-function getTodayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -99,6 +102,8 @@ export default function App() {
   const [isDailyAdventure, setIsDailyAdventure] = useState(false);
   const [dailyTasks, setDailyTasks] = useState<MathTask[]>([]);
   const [pendingChestOutcome, setPendingChestOutcome] = useState<ChestRewardOutcome | null>(null);
+  const [activeMinigameId, setActiveMinigameId] = useState<string | null>(null);
+  const [shopInitialTab, setShopInitialTab] = useState<string | undefined>(undefined);
   const [sessionStartedAt] = useState<number>(() => Date.now());
   const lastPlayTickRef = useRef<number>(Date.now());
 
@@ -528,17 +533,45 @@ export default function App() {
           onRotateAt={handleRotateHubAt}
           onRemoveAt={handleRemoveHubAt}
           onClaimQuest={handleClaimBuildQuest}
-          onOpenShop={() => setScene('shop')}
+          onOpenShop={() => {
+            setShopInitialTab(undefined);
+            setScene('shop');
+          }}
           onBack={() => setScene('map')}
         />
       )}
 
       {scene === 'shop' && state.profile && (
         <ShopScene
+          key={shopInitialTab ?? 'default'}
           state={state}
+          dailyDone={isDailyAdventureCompletedToday(state.dailyAdventureDate)}
+          initialTabId={shopInitialTab}
           onBuyItem={handleBuyShopItem}
           onToggleWishlist={handleToggleWishlist}
           onEquipAccessory={handleEquipAccessory}
+          onPlayMinigame={(catalogItemId) => {
+            setActiveMinigameId(catalogItemId);
+            setScene('minigames');
+          }}
+          onBack={() => {
+            setShopInitialTab(undefined);
+            setScene('map');
+          }}
+        />
+      )}
+
+      {scene === 'minigames' && state.profile && (
+        <MinigamesScene
+          state={state}
+          dailyDone={isDailyAdventureCompletedToday(state.dailyAdventureDate)}
+          initialGameId={activeMinigameId}
+          onBuyItem={handleBuyShopItem}
+          onStartDailyAdventure={handleStartDailyAdventure}
+          onOpenShop={() => {
+            setShopInitialTab('spiele');
+            setScene('shop');
+          }}
           onBack={() => setScene('map')}
         />
       )}

@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Klötzchen-Flitzer</title>
+<style>
+  :root {
+    --sky-top: #38bdf8;
+    --sky-mid: #bae6fd;
+    --sky-horizon: #fef08a;
+    --grass-light: #86efac;
+    --grass-dark: #22c55e;
+    --road-main: #475569;
+    --road-edge: #f8fafc;
+    --ink: #0f172a;
+    --card: rgba(255, 255, 255, 0.94);
+    --blue: #2563eb;
+    --amber: #f59e0b;
+    --rose: #e11d48;
+    --emerald: #059669;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--sky-top);
+    color: var(--ink);
+    font-family: ui-rounded, "Nunito", "Trebuchet MS", "Segoe UI", system-ui, -apple-system, sans-serif;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #app {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  canvas#world {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Player rear-view SVG car */
+  #playerWrap {
+    position: absolute;
+    left: 50%;
+    bottom: clamp(18px, 6.5vh, 52px);
+    width: clamp(104px, 19vw, 176px);
+    transform: translateX(-50%);
+    transform-origin: 50% 80%;
+    pointer-events: none;
+    z-index: 5;
+    will-change: transform, opacity;
+  }
+
+  #playerWrap.hurt {
+    animation: hurtBlink 0.22s steps(2, end) infinite;
+  }
+
+  @keyframes hurtBlink {
+    0% { opacity: 1; }
+    50% { opacity: 0.25; }
+    100% { opacity: 1; }
+  }
+
+  #playerCar {
+    width: 100%;
+    height: auto;
+    display: block;
+    filter: drop-shadow(0 8px 10px rgba(15, 23, 42, 0.35));
+  }
+
+  .tail-glow {
+    opacity: 0.72;
+    transition: opacity 0.15s ease;
+  }
+
+  .turbo .tail-glow {
+    opacity: 1;
+  }
+
+  .wheel-tread {
+    animation: wheelSpin 0.24s linear infinite;
+  }
+
+  .paused .wheel-tread {
+    animation-play-state: paused;
+  }
+
+  @keyframes wheelSpin {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: 16; }
+  }
+
+  /* HUD */
+  .hud {
+    position: absolute;
+    top: max(10px, env(safe-area-inset-top));
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    z-index: 10;
+    pointer-events: none;
+    flex-wrap: wrap;
+  }
+
+  .hud-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .hud-card {
+    background: var(--card);
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 6px 12px;
+    box-shadow: 0 3px 0 #cbd5e1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 14px;
+    pointer-events: auto;
+  }
+
+  .speedo {
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--blue);
+    letter-spacing: 0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .speedo small {
+    font-size: 11px;
+    color: #475569;
+    margin-left: 2px;
+  }
+
+  .score-num {
+    font-variant-numeric: tabular-nums;
+    color: #b45309;
+    font-weight: 900;
+  }
+
+  .hearts {
+    font-size: 16px;
+    letter-spacing: 2px;
+  }
+
+  .sound-btn {
+    cursor: pointer;
+    font: inherit;
+    font-weight: 800;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--card);
+    border: 2px solid #cbd5e1;
+    border-radius: 14px;
+    padding: 6px 11px;
+    box-shadow: 0 3px 0 #cbd5e1;
+  }
+
+  .sound-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #cbd5e1;
+  }
+
+  /* Touch Turbo / Steer controls on bottom corners */
+  .controls-bar {
+    position: absolute;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    pointer-events: none;
+    z-index: 11;
+  }
+
+  .steer-cluster {
+    display: flex;
+    gap: 8px;
+    pointer-events: auto;
+  }
+
+  .ctrl-btn {
+    min-width: 54px;
+    min-height: 48px;
+    border: 2px solid #1d4ed8;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #1e3a8a;
+    font: inherit;
+    font-weight: 900;
+    font-size: 18px;
+    box-shadow: 0 4px 0 #93c5fd;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+  }
+
+  .ctrl-btn:active, .ctrl-btn.active {
+    transform: translateY(2px);
+    background: #dbeafe;
+  }
+
+  .turbo-btn {
+    pointer-events: auto;
+    min-height: 50px;
+    padding: 0 18px;
+    border: 2px solid #b45309;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #fde047, #f59e0b);
+    color: #451a03;
+    font: inherit;
+    font-weight: 900;
+    font-size: 15px;
+    box-shadow: 0 4px 0 #b45309;
+    cursor: pointer;
+  }
+
+  .turbo-btn:active, .turbo-btn.active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #b45309;
+  }
+
+  /* Overlays */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    background: rgba(15, 23, 42, 0.36);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .overlay.hide {
+    display: none;
+  }
+
+  .panel {
+    width: 100%;
+    max-width: 430px;
+    background: #ffffff;
+    border: 3px solid #93c5fd;
+    border-radius: 26px;
+    padding: 20px 22px;
+    box-shadow: 0 8px 0 #3b82f6;
+    text-align: center;
+  }
+
+  .panel h1 {
+    font-size: clamp(22px, 5vw, 30px);
+    font-weight: 900;
+    color: #1e3a8a;
+    margin-bottom: 8px;
+  }
+
+  .panel p {
+    font-size: 14px;
+    line-height: 1.45;
+    color: #334155;
+    margin-bottom: 10px;
+  }
+
+  .legend {
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 14px;
+    text-align: left;
+    display: grid;
+    gap: 5px;
+  }
+
+  .go-btn {
+    width: 100%;
+    min-height: 50px;
+    border: 0;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #10b981, #059669);
+    color: #ffffff;
+    font: inherit;
+    font-weight: 900;
+    font-size: 17px;
+    box-shadow: 0 4px 0 #047857;
+    cursor: pointer;
+  }
+
+  .go-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #047857;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 12px 0 14px;
+  }
+
+  .stat-box {
+    background: #f1f5f9;
+    border: 2px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 8px 6px;
+  }
+
+  .stat-box .lbl {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+  }
+
+  .stat-box .val {
+    display: block;
+    font-size: 17px;
+    font-weight: 900;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Floating popups */
+  .pop {
+    position: absolute;
+    left: 50%;
+    top: 38%;
+    transform: translate(-50%, -50%);
+    font-weight: 900;
+    font-size: 20px;
+    color: #059669;
+    text-shadow: 0 2px 0 #ffffff, 0 -2px 0 #ffffff, 2px 0 0 #ffffff, -2px 0 0 #ffffff;
+    pointer-events: none;
+    z-index: 15;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.55s ease;
+  }
+
+  .pop.show {
+    opacity: 1;
+    transform: translate(-50%, -95%);
+  }
+
+  .pop.crash {
+    color: #e11d48;
+  }
+
+  @media (max-width: 520px) {
+    .hud-card {
+      padding: 5px 9px;
+      font-size: 12px;
+      border-radius: 12px;
+    }
+    .speedo { font-size: 14px; }
+    .ctrl-btn { min-width: 46px; min-height: 42px; font-size: 16px; }
+    .turbo-btn { min-height: 44px; font-size: 14px; padding: 0 14px; }
+  }
+
+  @media (max-height: 460px) {
+    .panel { padding: 14px 16px; }
+    .panel h1 { font-size: 20px; margin-bottom: 4px; }
+    .panel p { font-size: 12px; margin-bottom: 6px; }
+    .legend { padding: 7px 10px; font-size: 12px; margin-bottom: 8px; }
+    .go-btn { min-height: 42px; font-size: 15px; }
+    #playerWrap { bottom: 12px; width: clamp(92px, 16vw, 134px); }
+    .ctrl-btn { min-width: 44px; min-height: 38px; }
+    .turbo-btn { min-height: 40px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wheel-tread, #playerWrap.hurt {
+      animation: none;
+    }
+  }
+</style>
+</head>
+<body>
+<div id="app" class="paused">
+  <canvas id="world" aria-label="Klötzchen-Flitzer Straße"></canvas>
+
+  <!-- Rear-view SVG Klötzchen-Cabrio -->
+  <div id="playerWrap" aria-hidden="true">
+    <svg id="playerCar" viewBox="0 0 220 132">
+      <!-- Ground shadow -->
+      <ellipse cx="110" cy="118" rx="88" ry="12" fill="rgba(15, 23, 42, 0.28)" />
+      <!-- Rear wheels -->
+      <rect x="20" y="74" width="32" height="44" rx="8" fill="#1e293b" />
+      <rect x="168" y="74" width="32" height="44" rx="8" fill="#1e293b" />
+      <line class="wheel-tread" x1="36" y1="78" x2="36" y2="114" stroke="#64748b" stroke-width="10" stroke-dasharray="6 10" />
+      <line class="wheel-tread" x1="184" y1="78" x2="184" y2="114" stroke="#64748b" stroke-width="10" stroke-dasharray="6 10" />
+      <!-- Lower chassis -->
+      <rect x="28" y="64" width="164" height="40" rx="14" fill="#dc2626" stroke="#991b1b" stroke-width="4" />
+      <!-- Bumper -->
+      <rect x="22" y="88" width="176" height="20" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="3" />
+      <!-- Racing stripe & Klötzchen studs -->
+      <rect x="95" y="64" width="30" height="24" fill="#fde047" />
+      <rect x="60" y="54" width="100" height="14" rx="5" fill="#ef4444" stroke="#991b1b" stroke-width="3" />
+      <!-- Rear windshield -->
+      <polygon points="52,56 68,26 152,26 168,56" fill="#bae6fd" stroke="#1e293b" stroke-width="4" stroke-linejoin="round" />
+      <!-- Driver helmet & ears -->
+      <circle cx="110" cy="40" r="12" fill="#f59e0b" stroke="#78350f" stroke-width="3" />
+      <circle cx="101" cy="30" r="5" fill="#f59e0b" stroke="#78350f" stroke-width="2.5" />
+      <circle cx="119" cy="30" r="5" fill="#f59e0b" stroke="#78350f" stroke-width="2.5" />
+      <!-- Spoiler -->
+      <rect x="44" y="50" width="132" height="8" rx="4" fill="#2563eb" stroke="#1e3a8a" stroke-width="2.5" />
+      <!-- Glowing tail lights -->
+      <g class="tail-glow">
+        <rect x="36" y="70" width="30" height="13" rx="5" fill="#fef08a" stroke="#f97316" stroke-width="3" />
+        <rect x="154" y="70" width="30" height="13" rx="5" fill="#fef08a" stroke="#f97316" stroke-width="3" />
+        <circle cx="51" cy="76.5" r="4" fill="#ef4444" />
+        <circle cx="169" cy="76.5" r="4" fill="#ef4444" />
+      </g>
+      <!-- License plate -->
+      <rect x="86" y="91" width="48" height="14" rx="4" fill="#dbeafe" stroke="#60a5fa" stroke-width="2" />
+      <text x="110" y="102" text-anchor="middle" font-family="ui-monospace, monospace" font-weight="900" font-size="9.5" fill="#1e3a8a">KL-2B</text>
+      <!-- Exhaust pipes -->
+      <circle cx="48" cy="106" r="5" fill="#475569" stroke="#0f172a" stroke-width="2" />
+      <circle cx="172" cy="106" r="5" fill="#475569" stroke="#0f172a" stroke-width="2" />
+    </svg>
+  </div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-group">
+      <div class="hud-card">
+        <span class="speedo"><span id="kmh">85</span><small>km/h</small></span>
+      </div>
+      <div class="hud-card">
+        <span>🏁 <span class="score-num" id="scoreVal">0</span></span>
+        <span style="color:#cbd5e1">|</span>
+        <span>🚗 <span class="score-num" id="passVal">0</span></span>
+      </div>
+    </div>
+
+    <div class="hud-group">
+      <div class="hud-card">
+        <span class="hearts" id="heartsVal" aria-label="Leben">❤️❤️❤️</span>
+      </div>
+      <div class="hud-card">
+        <span>⭐ <span class="score-num" id="bestVal">0</span></span>
+      </div>
+      <button type="button" class="sound-btn" id="soundToggle" aria-pressed="false">🔇 Ton aus</button>
+    </div>
+  </div>
+
+  <!-- Touch / Mouse Quick Controls -->
+  <div class="controls-bar" id="controlsBar">
+    <div class="steer-cluster">
+      <button type="button" class="ctrl-btn" id="btnLeft" aria-label="Nach links lenken">◀</button>
+      <button type="button" class="ctrl-btn" id="btnRight" aria-label="Nach rechts lenken">▶</button>
+    </div>
+    <button type="button" class="turbo-btn" id="btnTurbo">⚡ Turbo halten</button>
+  </div>
+
+  <!-- Floating Status Pop -->
+  <div class="pop" id="popMsg"></div>
+
+  <!-- Start Overlay -->
+  <div class="overlay" id="startOv">
+    <div class="panel">
+      <h1>🏎️ Klötzchen-Flitzer!</h1>
+      <p>Sause über die sonnige Alpen-Allee, überhole bunte Klötzchen-Autos und weiche dem Gegenverkehr aus!</p>
+      <div class="legend">
+        <div>🎯 <b>Steuern:</b> Finger/Maus ziehen, Pfeiltasten ◀ ▶ oder Knöpfe unten</div>
+        <div>⚡ <b>Turbo:</b> Leertaste / ↑ oder „Turbo halten“ drücken</div>
+        <div>🚗 <b>Überholen:</b> Auf der rechten/mittleren Spur vorbeiziehen = +25 Punkte</div>
+        <div>🚨 <b>Gegenverkehr:</b> Linke Spur kommt entgegen – nicht zusammenstoßen!</div>
+      </div>
+      <button type="button" class="go-btn" id="startBtn">Motor starten! 🚀</button>
+    </div>
+  </div>
+
+  <!-- Game Over Overlay -->
+  <div class="overlay hide" id="overOv">
+    <div class="panel">
+      <h1>🏁 Boxenstopp!</h1>
+      <p id="overQuote">Klasse gefahren durch die Klötzchen-Berge!</p>
+      <div class="stats-row">
+        <div class="stat-box">
+          <span class="lbl">Punkte</span>
+          <span class="val" id="endScore">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="lbl">Überholt</span>
+          <span class="val" id="endPass">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="lbl">Rekord</span>
+          <span class="val" id="endBest">0</span>
+        </div>
+      </div>
+      <button type="button" class="go-btn" id="retryBtn">Nochmal flitzen! 🔄</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var app = document.getElementById('app');
+  var cv = document.getElementById('world');
+  var ctx = cv.getContext('2d');
+  var playerWrap = document.getElementById('playerWrap');
+  var popMsg = document.getElementById('popMsg');
+
+  var kmhEl = document.getElementById('kmh');
+  var scoreEl = document.getElementById('scoreVal');
+  var passEl = document.getElementById('passVal');
+  var heartsEl = document.getElementById('heartsVal');
+  var bestEl = document.getElementById('bestVal');
+  var soundBtn = document.getElementById('soundToggle');
+
+  var startOv = document.getElementById('startOv');
+  var overOv = document.getElementById('overOv');
+  var endScoreEl = document.getElementById('endScore');
+  var endPassEl = document.getElementById('endPass');
+  var endBestEl = document.getElementById('endBest');
+  var overQuoteEl = document.getElementById('overQuote');
+
+  var mqReduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var reducedMotion = mqReduced.matches;
+
+  var W = 0, H = 0, DPR = 1;
+  var STORAGE_KEY = 'kloetzchen_mg_flitzer_best';
+  var bestScore = 0;
+  try {
+    bestScore = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10) || 0;
+  } catch (e) { bestScore = 0; }
+  bestEl.textContent = String(bestScore);
+
+  /* ---------- WebAudio SFX (off until toggled or enabled safely) ---------- */
+  var ac = null;
+  var soundOn = false;
+  function ensureAudio() {
+    if (!soundOn) return null;
+    if (!ac) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ac = new AC();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function playTone(freq1, freq2, dur, type, vol) {
+    var ctxA = ensureAudio();
+    if (!ctxA) return;
+    var t = ctxA.currentTime;
+    var osc = ctxA.createOscillator();
+    var g = ctxA.createGain();
+    osc.type = type || 'triangle';
+    osc.frequency.setValueAtTime(freq1, t);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq2), t + dur);
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.linearRampToValueAtTime(vol || 0.14, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g);
+    g.connect(ctxA.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+  }
+  function playPassSound() { playTone(520, 860, 0.16, 'triangle', 0.11); }
+  function playStarSound() { playTone(660, 1180, 0.22, 'sine', 0.13); }
+  function playCrashSound() { playTone(165, 58, 0.28, 'sawtooth', 0.18); }
+
+  soundBtn.addEventListener('click', function () {
+    soundOn = !soundOn;
+    soundBtn.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
+    soundBtn.textContent = soundOn ? '🔊 Ton an' : '🔇 Ton aus';
+    if (soundOn) playPassSound();
+  });
+
+  /* ---------- Game State ---------- */
+  var running = false;
+  var playerX = 0.35; // -1 (far left road edge) .. +1 (far right road edge), start on right lane
+  var targetPointerX = null;
+  var tiltInput = 0;
+  var steerLeft = false, steerRight = false, turboHeld = false;
+  var speed = 95;
+  var roadCurve = 0;
+  var targetCurve = 0;
+  var scrollZ = 0;
+  var score = 0;
+  var scoreFloat = 0;
+  var overtaken = 0;
+  var hearts = 3;
+  var invuln = 0;
+  var shakeT = 0;
+  var spawnTimer = 0.8;
+  var starTimer = 2.4;
+  var popTimer = 0;
+
+  var cars = [];
+  var pickups = [];
+  var clouds = [
+    { x: 0.16, y: 0.15, s: 1.0, v: 0.008 },
+    { x: 0.48, y: 0.11, s: 0.8, v: 0.005 },
+    { x: 0.80, y: 0.18, s: 1.15, v: 0.007 }
+  ];
+  var starsBg = Array.from({ length: 24 }, function (_, i) {
+    return {
+      x: ((i * 73) % 100) / 100,
+      y: ((i * 31) % 38) / 100,
+      r: 1 + (i % 2),
+      p: i * 0.7
+    };
+  });
+
+  var CAR_PALETTES = [
+    { body: '#3b82f6', roof: '#1d4ed8', light: '#fef08a', label: 'Flitzer' },
+    { body: '#10b981', roof: '#047857', light: '#fde047', label: 'Grün-Mobil' },
+    { body: '#f59e0b', roof: '#b45309', light: '#ffffff', label: 'Sonnen-Bus' },
+    { body: '#a855f7', roof: '#6d28d9', light: '#e9d5ff', label: 'Lila-Kugel' },
+    { body: '#ec4899', roof: '#be185d', light: '#fce7f3', label: 'Pink-Flitzer' }
+  ];
+
+  // Roadside scenery objects (trees, brick houses, flower bushes)
+  var props = [];
+  function initProps() {
+    props = [];
+    for (var i = 0; i < 16; i++) {
+      var z = i / 16;
+      props.push({ z: z, side: -1, kind: i % 4 });
+      props.push({ z: z + 0.03, side: 1, kind: (i + 2) % 4 });
+    }
+  }
+  initProps();
+
+  function showPop(text, isCrash) {
+    popMsg.textContent = text;
+    popMsg.className = 'pop show' + (isCrash ? ' crash' : '');
+    popTimer = 0.75;
+  }
+
+  function updateHud() {
+    kmhEl.textContent = String(Math.round(speed));
+    scoreEl.textContent = String(score);
+    passEl.textContent = String(overtaken);
+    heartsEl.textContent = '❤️'.repeat(Math.max(0, hearts)) + '🖤'.repeat(Math.max(0, 3 - hearts));
+    bestEl.textContent = String(bestScore);
+  }
+
+  function resetGame() {
+    playerX = 0.34;
+    targetPointerX = null;
+    speed = 92;
+    roadCurve = 0;
+    targetCurve = 0;
+    scrollZ = 0;
+    score = 0;
+    scoreFloat = 0;
+    overtaken = 0;
+    hearts = 3;
+    invuln = 0;
+    shakeT = 0;
+    spawnTimer = 0.9;
+    starTimer = 2.0;
+    cars = [];
+    pickups = [];
+    playerWrap.classList.remove('hurt');
+    app.classList.remove('paused');
+    startOv.classList.add('hide');
+    overOv.classList.add('hide');
+    running = true;
+    updateHud();
+    showPop('Gute Fahrt! 🏁', false);
+  }
+
+  function endGame() {
+    running = false;
+    app.classList.add('paused');
+    playerWrap.classList.remove('hurt');
+    if (score > bestScore) {
+      bestScore = score;
+      try { localStorage.setItem(STORAGE_KEY, String(bestScore)); } catch (e) {}
+    }
+    updateHud();
+    endScoreEl.textContent = String(score);
+    endPassEl.textContent = String(overtaken);
+    endBestEl.textContent = String(bestScore);
+    overQuoteEl.textContent =
+      score >= 400
+        ? 'Weltklasse-Rennfahrer auf der Klötzchen-Allee!'
+        : score >= 150
+          ? 'Stark gelenkt und prima überholt!'
+          : 'Guter Start! Halte Abstand zum Gegenverkehr.';
+    overOv.classList.remove('hide');
+  }
+
+  /* ---------- Input Handling ---------- */
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') steerLeft = true;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') steerRight = true;
+    if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+      turboHeld = true;
+      if (!running && !startOv.classList.contains('hide') && e.key === ' ') {
+        e.preventDefault();
+        resetGame();
+      }
+    }
+  });
+  window.addEventListener('keyup', function (e) {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') steerLeft = false;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') steerRight = false;
+    if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') turboHeld = false;
+  });
+
+  // Pointer drag / click on canvas steers directly toward pointer X and boosts slightly while held
+  var pointerDown = false;
+  function setPointer(clientX) {
+    var norm = (clientX / Math.max(1, W)) * 2 - 1; // -1..1
+    targetPointerX = Math.max(-0.92, Math.min(0.92, norm * 1.15));
+  }
+  cv.addEventListener('pointerdown', function (e) {
+    pointerDown = true;
+    setPointer(e.clientX);
+    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  cv.addEventListener('pointermove', function (e) {
+    if (pointerDown || e.pointerType === 'mouse') {
+      setPointer(e.clientX);
+    }
+  });
+  cv.addEventListener('pointerup', function () { pointerDown = false; });
+  cv.addEventListener('pointercancel', function () { pointerDown = false; });
+
+  // Bottom buttons for comfortable tablet / phone thumb steering
+  function bindHoldButton(btn, onChange) {
+    btn.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      btn.classList.add('active');
+      targetPointerX = null;
+      onChange(true);
+    });
+    var off = function () {
+      btn.classList.remove('active');
+      onChange(false);
+    };
+    btn.addEventListener('pointerup', off);
+    btn.addEventListener('pointercancel', off);
+    btn.addEventListener('pointerleave', off);
+  }
+  bindHoldButton(document.getElementById('btnLeft'), function (v) { steerLeft = v; });
+  bindHoldButton(document.getElementById('btnRight'), function (v) { steerRight = v; });
+  bindHoldButton(document.getElementById('btnTurbo'), function (v) { turboHeld = v; });
+
+  // Optional gentle device tilt
+  window.addEventListener('deviceorientation', function (e) {
+    if (typeof e.gamma === 'number' && Math.abs(e.gamma) > 3) {
+      tiltInput = Math.max(-1, Math.min(1, e.gamma / 28));
+    } else {
+      tiltInput = 0;
+    }
+  });
+
+  document.getElementById('startBtn').addEventListener('click', resetGame);
+  document.getElementById('retryBtn').addEventListener('click', resetGame);
+
+  /* ---------- Spawning Traffic & Stars ---------- */
+  function spawnTrafficCar() {
+    // 3 road lanes: left (-0.52 = oncoming), middle (0.0 = slow overtake), right (+0.52 = slow overtake)
+    var roll = Math.random();
+    var isOncoming = roll < 0.42;
+    var laneX;
+    if (isOncoming) {
+      laneX = -0.52 + (Math.random() - 0.5) * 0.14;
+    } else {
+      laneX = Math.random() < 0.5 ? 0.02 : 0.54;
+    }
+
+    // Avoid spawning directly on top of another newly spawned car
+    for (var i = 0; i < cars.length; i++) {
+      if (cars[i].z < 0.25 && Math.abs(cars[i].x - laneX) < 0.35) return;
+    }
+
+    var pal = CAR_PALETTES[Math.floor(Math.random() * CAR_PALETTES.length)];
+    cars.push({
+      x: laneX,
+      z: 0.02,
+      oncoming: isOncoming,
+      relSpeed: isOncoming ? 0.58 + Math.random() * 0.15 : 0.22 + Math.random() * 0.12,
+      palette: pal,
+      passed: false
+    });
+  }
+
+  function spawnStarPickup() {
+    var lanes = [-0.5, 0.0, 0.5];
+    var lx = lanes[Math.floor(Math.random() * lanes.length)];
+    pickups.push({ x: lx, z: 0.02, collected: false });
+  }
+
+  /* ---------- Projection Helpers ---------- */
+  function horizonY() {
+    return H * 0.44;
+  }
+
+  function project(z, roadOffsetNorm) {
+    var hy = horizonY();
+    var p = Math.pow(z, 1.48); // perspective non-linearity for snappy speed feeling
+    var y = hy + p * (H - hy);
+    var roadHalfW = (0.045 + p * 0.45) * Math.min(W * 1.12, Math.max(W, H * 1.15));
+    var curveShift = roadCurve * Math.pow(1 - z, 2) * W * 0.22;
+    var centerX = W * 0.5 + curveShift;
+    var screenX = centerX + roadOffsetNorm * roadHalfW;
+    return { x: screenX, y: y, hw: roadHalfW, scale: 0.12 + p * 1.05, p: p };
+  }
+
+  /* ---------- Drawing ---------- */
+  function drawSkyAndSun(t) {
+    var hy = horizonY();
+    var skyGrad = ctx.createLinearGradient(0, 0, 0, hy + 10);
+    skyGrad.addColorStop(0, '#38bdf8');
+    skyGrad.addColorStop(0.62, '#bae6fd');
+    skyGrad.addColorStop(1, '#fef08a');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, hy + 8);
+
+    // Subtle sparkle stars high in sky
+    for (var i = 0; i < starsBg.length; i++) {
+      var st = starsBg[i];
+      var alpha = 0.22 + 0.18 * Math.sin(t * 2 + st.p);
+      ctx.fillStyle = 'rgba(255,255,255,' + alpha.toFixed(2) + ')';
+      ctx.beginPath();
+      ctx.arc(st.x * W, st.y * hy, st.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Warm striped smiling Klötzchen sun at horizon
+    var sunR = Math.min(W, H) * 0.13;
+    var sunX = W * 0.5 + roadCurve * W * 0.12;
+    var sunY = hy - sunR * 0.22;
+    ctx.save();
+    var sunGrad = ctx.createLinearGradient(0, sunY - sunR, 0, sunY + sunR);
+    sunGrad.addColorStop(0, '#fde047');
+    sunGrad.addColorStop(1, '#fb923c');
+    ctx.fillStyle = sunGrad;
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cheerful sun stripes near bottom
+    ctx.fillStyle = 'rgba(254, 240, 138, 0.55)';
+    for (var s = 0; s < 3; s++) {
+      var sy = sunY + sunR * (0.28 + s * 0.21);
+      var sh = 3 + s * 2;
+      ctx.fillRect(sunX - sunR, sy, sunR * 2, sh);
+    }
+    ctx.restore();
+
+    // Fluffy blocky clouds
+    for (var c = 0; c < clouds.length; c++) {
+      var cl = clouds[c];
+      var cx = ((cl.x + t * cl.v * (reducedMotion ? 0.2 : 1)) % 1.2 - 0.1) * W;
+      var cy = cl.y * hy;
+      var cw = 54 * cl.s;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
+      ctx.beginPath();
+      ctx.roundRect(cx - cw * 0.5, cy, cw, cw * 0.34, cw * 0.17);
+      ctx.roundRect(cx - cw * 0.3, cy - cw * 0.18, cw * 0.55, cw * 0.34, cw * 0.17);
+      ctx.fill();
+    }
+
+    // Friendly Bavarian mountain ridge
+    ctx.fillStyle = '#60a5fa';
+    ctx.beginPath();
+    ctx.moveTo(0, hy + 2);
+    var peaks = [0, 0.14, 0.28, 0.42, 0.58, 0.72, 0.86, 1.0];
+    var heights = [0.06, 0.18, 0.09, 0.21, 0.12, 0.22, 0.10, 0.07];
+    for (var k = 0; k < peaks.length; k++) {
+      ctx.lineTo(peaks[k] * W + roadCurve * W * 0.08, hy - heights[k] * hy);
+    }
+    ctx.lineTo(W, hy + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#34d399';
+    ctx.beginPath();
+    ctx.moveTo(0, hy + 2);
+    var hills = [0, 0.18, 0.36, 0.54, 0.75, 0.9, 1.0];
+    var hillH = [0.03, 0.09, 0.04, 0.10, 0.05, 0.11, 0.04];
+    for (var h = 0; h < hills.length; h++) {
+      ctx.lineTo(hills[h] * W + roadCurve * W * 0.11, hy - hillH[h] * hy);
+    }
+    ctx.lineTo(W, hy + 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawRoadAndGrass() {
+    var hy = horizonY();
+    var strips = 42;
+
+    // Draw banded meadow + perspective road slices
+    for (var i = 0; i < strips; i++) {
+      var z1 = i / strips;
+      var z2 = (i + 1) / strips;
+      var a = project(z1, 0);
+      var b = project(z2, 0);
+      var band = Math.floor((z1 * 12 - scrollZ * 12) % 2 + 2) % 2 === 0;
+
+      // Meadow grass
+      ctx.fillStyle = band ? '#86efac' : '#4ade80';
+      ctx.fillRect(0, a.y, W, Math.ceil(b.y - a.y) + 1);
+
+      // Subtle sunny meadow grid lines
+      if (band) {
+        ctx.strokeStyle = 'rgba(22, 163, 74, 0.22)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, a.y);
+        ctx.lineTo(W, a.y);
+        ctx.stroke();
+      }
+
+      // Red & white Klötzchen curbstones
+      var curbW1 = a.hw * 0.09;
+      var curbW2 = b.hw * 0.09;
+      ctx.fillStyle = band ? '#ef4444' : '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(a.x - a.hw - curbW1, a.y);
+      ctx.lineTo(a.x + a.hw + curbW1, a.y);
+      ctx.lineTo(b.x + b.hw + curbW2, b.y + 1);
+      ctx.lineTo(b.x - b.hw - curbW2, b.y + 1);
+      ctx.closePath();
+      ctx.fill();
+
+      // Road surface
+      ctx.fillStyle = band ? '#475569' : '#334155';
+      ctx.beginPath();
+      ctx.moveTo(a.x - a.hw, a.y);
+      ctx.lineTo(a.x + a.hw, a.y);
+      ctx.lineTo(b.x + b.hw, b.y + 1);
+      ctx.lineTo(b.x - b.hw, b.y + 1);
+      ctx.closePath();
+      ctx.fill();
+
+      // Dashed lane dividers (separating oncoming left lane & middle/right lanes)
+      if (band) {
+        ctx.fillStyle = '#fef08a';
+        var lw1 = Math.max(1.5, a.hw * 0.025);
+        var lw2 = Math.max(2, b.hw * 0.025);
+        // Left solid/dashed divider (oncoming boundary)
+        var lx1 = a.x - a.hw * 0.30, lx2 = b.x - b.hw * 0.30;
+        ctx.beginPath();
+        ctx.moveTo(lx1 - lw1, a.y);
+        ctx.lineTo(lx1 + lw1, a.y);
+        ctx.lineTo(lx2 + lw2, b.y + 1);
+        ctx.lineTo(lx2 - lw2, b.y + 1);
+        ctx.closePath();
+        ctx.fill();
+
+        // Right white dashed divider
+        ctx.fillStyle = '#f8fafc';
+        var rx1 = a.x + a.hw * 0.28, rx2 = b.x + b.hw * 0.28;
+        ctx.beginPath();
+        ctx.moveTo(rx1 - lw1 * 0.85, a.y);
+        ctx.lineTo(rx1 + lw1 * 0.85, a.y);
+        ctx.lineTo(rx2 + lw2 * 0.85, b.y + 1);
+        ctx.lineTo(rx2 - lw2 * 0.85, b.y + 1);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // Horizon line glow
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.fillRect(0, hy - 1, W, 3);
+  }
+
+  function drawSceneryProp(pr) {
+    var pt = project(pr.z, pr.side * 1.48);
+    var sc = pt.scale;
+    if (sc < 0.14) return;
+    var x = pt.x, y = pt.y;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(sc, sc);
+
+    // Ground shadow
+    ctx.fillStyle = 'rgba(21, 128, 61, 0.25)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 22, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (pr.kind === 0 || pr.kind === 1) {
+      // Toy-brick pine tree
+      ctx.fillStyle = '#92400e';
+      ctx.fillRect(-5, -26, 10, 26);
+      ctx.fillStyle = pr.kind === 0 ? '#16a34a' : '#059669';
+      ctx.beginPath();
+      ctx.moveTo(0, -88);
+      ctx.lineTo(-28, -44);
+      ctx.lineTo(28, -44);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = pr.kind === 0 ? '#22c55e' : '#10b981';
+      ctx.beginPath();
+      ctx.moveTo(0, -64);
+      ctx.lineTo(-34, -22);
+      ctx.lineTo(34, -22);
+      ctx.closePath();
+      ctx.fill();
+    } else if (pr.kind === 2) {
+      // Colorful Klötzchen house
+      ctx.fillStyle = '#fef3c7';
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 2;
+      ctx.fillRect(-24, -40, 48, 40);
+      ctx.strokeRect(-24, -40, 48, 40);
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(-28, -40);
+      ctx.lineTo(0, -66);
+      ctx.lineTo(28, -40);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(-10, -28, 20, 14);
+    } else {
+      // Flower bush
+      ctx.fillStyle = '#15803d';
+      ctx.beginPath();
+      ctx.roundRect(-20, -24, 40, 24, 12);
+      ctx.fill();
+      ctx.fillStyle = '#f43f5e';
+      ctx.beginPath();
+      ctx.arc(-8, -16, 4.5, 0, Math.PI * 2);
+      ctx.arc(8, -14, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      ctx.arc(0, -21, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawTrafficCar(car) {
+    var pt = project(car.z, car.x);
+    var sc = pt.scale;
+    if (sc < 0.14) return;
+
+    ctx.save();
+    ctx.translate(pt.x, pt.y);
+    ctx.scale(sc, sc);
+
+    // Shadow
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.3)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 46, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tires
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-40, -24, 14, 24);
+    ctx.fillRect(26, -24, 14, 24);
+
+    // Car body
+    ctx.fillStyle = car.palette.body;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.roundRect(-42, -44, 84, 34, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    // Cabin / roof
+    ctx.fillStyle = car.palette.roof;
+    ctx.beginPath();
+    ctx.roundRect(-28, -64, 56, 24, 8);
+    ctx.fill();
+
+    // Window
+    ctx.fillStyle = '#bae6fd';
+    ctx.beginPath();
+    ctx.roundRect(-22, -60, 44, 16, 4);
+    ctx.fill();
+
+    if (car.oncoming) {
+      // Bright oncoming headlights + slight glare beam
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.32)';
+      ctx.beginPath();
+      ctx.arc(-28, -26, 16, 0, Math.PI * 2);
+      ctx.arc(28, -26, 16, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.arc(-28, -26, 8, 0, Math.PI * 2);
+      ctx.arc(28, -26, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Grille
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-14, -30, 28, 10);
+    } else {
+      // Rear tail lights of slower car ahead
+      ctx.fillStyle = '#f43f5e';
+      ctx.fillRect(-35, -32, 16, 9);
+      ctx.fillRect(19, -32, 16, 9);
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(-12, -26, 24, 8);
+    }
+
+    ctx.restore();
+  }
+
+  function drawStarPickup(pk) {
+    var pt = project(pk.z, pk.x);
+    var sc = pt.scale;
+    if (sc < 0.14) return;
+    ctx.save();
+    ctx.translate(pt.x, pt.y - 24 * sc);
+    ctx.scale(sc, sc);
+    ctx.fillStyle = '#fde047';
+    ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (var i = 0; i < 10; i++) {
+      var ang = (i * Math.PI) / 5 - Math.PI / 2;
+      var rad = i % 2 === 0 ? 18 : 8;
+      if (i === 0) ctx.moveTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
+      else ctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ---------- Main Frame Loop ---------- */
+  var lastT = 0;
+  var totalT = 0;
+
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = Math.max(320, window.innerWidth);
+    H = Math.max(260, window.innerHeight);
+    cv.width = Math.round(W * DPR);
+    cv.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    var dt = Math.min(0.05, (now - lastT) / 1000 || 0);
+    lastT = now;
+    totalT += dt;
+
+    if (popTimer > 0) {
+      popTimer -= dt;
+      if (popTimer <= 0) popMsg.className = 'pop';
+    }
+
+    if (running) {
+      // Steering from keys, touch buttons, pointer X, or tilt
+      var steerDir = (steerRight ? 1 : 0) - (steerLeft ? 1 : 0);
+      if (Math.abs(tiltInput) > 0.05 && steerDir === 0) {
+        steerDir = tiltInput;
+      }
+
+      if (steerDir !== 0) {
+        playerX += steerDir * 1.45 * dt;
+      } else if (targetPointerX !== null) {
+        playerX += (targetPointerX - playerX) * Math.min(1, dt * 8);
+      }
+      playerX = Math.max(-0.86, Math.min(0.86, playerX));
+
+      // Gentle road curvature influenced by steering and soft waves
+      targetCurve = -playerX * 0.42 + Math.sin(totalT * 0.35) * 0.32;
+      roadCurve += (targetCurve - roadCurve) * Math.min(1, dt * 2.2);
+
+      // Speed control (Turbo with mouse hold / button / Space)
+      var boosting = turboHeld || pointerDown;
+      var desiredSpeed = boosting ? 175 : 98 + Math.min(45, overtaken * 1.6);
+      speed += (desiredSpeed - speed) * Math.min(1, dt * (boosting ? 3.2 : 2.0));
+
+      if (boosting) app.classList.add('turbo');
+      else app.classList.remove('turbo');
+
+      var speedNorm = speed / 120;
+      scrollZ = (scrollZ + dt * speedNorm * 0.9) % 1;
+
+      scoreFloat += dt * speed * 0.14;
+      if (Math.floor(scoreFloat) > score) {
+        score = Math.floor(scoreFloat);
+        updateHud();
+      } else {
+        kmhEl.textContent = String(Math.round(speed));
+      }
+
+      // Move roadside props
+      for (var p = 0; p < props.length; p++) {
+        props[p].z += dt * speedNorm * 0.72;
+        if (props[p].z > 1.05) props[p].z -= 1.05;
+      }
+
+      // Spawn cars & stars
+      spawnTimer -= dt * (0.8 + speedNorm * 0.35);
+      if (spawnTimer <= 0) {
+        spawnTrafficCar();
+        spawnTimer = Math.max(0.55, 1.35 - Math.min(0.6, overtaken * 0.015)) + Math.random() * 0.45;
+      }
+      starTimer -= dt;
+      if (starTimer <= 0) {
+        spawnStarPickup();
+        starTimer = 2.6 + Math.random() * 2.2;
+      }
+
+      if (invuln > 0) {
+        invuln -= dt;
+        if (invuln <= 0) playerWrap.classList.remove('hurt');
+      }
+      if (shakeT > 0) shakeT -= dt;
+
+      // Update pickups & check star collection
+      for (var k = pickups.length - 1; k >= 0; k--) {
+        var pk = pickups[k];
+        pk.z += dt * speedNorm * 0.74;
+        if (!pk.collected && pk.z >= 0.84 && pk.z <= 0.98 && Math.abs(pk.x - playerX) < 0.30) {
+          pk.collected = true;
+          scoreFloat += 30;
+          score = Math.floor(scoreFloat);
+          playStarSound();
+          showPop('⭐ +30 Punkte!', false);
+          updateHud();
+        }
+        if (pk.collected || pk.z > 1.06) pickups.splice(k, 1);
+      }
+
+      // Update traffic cars & check overtaking + collisions
+      for (var i = cars.length - 1; i >= 0; i--) {
+        var car = cars[i];
+        var approach = car.oncoming
+          ? speedNorm * 0.75 + car.relSpeed
+          : Math.max(0.18, speedNorm * 0.72 - car.relSpeed);
+        car.z += dt * approach;
+
+        // Collision zone near bottom of screen where player car sits
+        if (car.z >= 0.86 && car.z <= 0.98 && Math.abs(car.x - playerX) < 0.32) {
+          if (invuln <= 0) {
+            hearts--;
+            invuln = 1.5;
+            shakeT = 0.35;
+            speed = Math.max(60, speed * 0.6);
+            playerWrap.classList.add('hurt');
+            playCrashSound();
+            showPop(car.oncoming ? '💥 Gegenverkehr! −1 ❤️' : '💥 Ups, gestreift! −1 ❤️', true);
+            updateHud();
+            cars.splice(i, 1);
+            if (hearts <= 0) {
+              endGame();
+              break;
+            }
+            continue;
+          }
+        }
+
+        // Overtaken cleanly!
+        if (!car.passed && car.z > 0.98) {
+          car.passed = true;
+          if (!car.oncoming) {
+            overtaken++;
+            scoreFloat += 25;
+            score = Math.floor(scoreFloat);
+            playPassSound();
+            showPop('🚗 Überholt! +25', false);
+            updateHud();
+          } else {
+            scoreFloat += 10;
+            score = Math.floor(scoreFloat);
+            updateHud();
+          }
+        }
+
+        if (car.z > 1.12) cars.splice(i, 1);
+      }
+    }
+
+    // Position SVG player car smoothly with subtle tilt and camera shake
+    var ptPlayer = project(0.92, playerX);
+    var tiltDeg = steerLeft ? -5 : steerRight ? 5 : targetPointerX !== null ? (targetPointerX - playerX) * 14 : 0;
+    var sx = shakeT > 0 && !reducedMotion ? (Math.random() - 0.5) * 10 : 0;
+    var sy = shakeT > 0 && !reducedMotion ? (Math.random() - 0.5) * 8 : 0;
+    playerWrap.style.left = (ptPlayer.x + sx) + 'px';
+    playerWrap.style.transform = 'translateX(-50%) translateY(' + sy.toFixed(1) + 'px) rotate(' + tiltDeg.toFixed(1) + 'deg)';
+
+    // Draw world
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    if (shakeT > 0 && !reducedMotion) {
+      ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 6);
+    }
+    drawSkyAndSun(totalT);
+    drawRoadAndGrass();
+
+    // Painter's algorithm: sort scenery, pickups, and cars far-to-near
+    var drawList = [];
+    for (var s = 0; s < props.length; s++) drawList.push({ type: 'prop', z: props[s].z, ref: props[s] });
+    for (var p2 = 0; p2 < pickups.length; p2++) drawList.push({ type: 'star', z: pickups[p2].z, ref: pickups[p2] });
+    for (var c2 = 0; c2 < cars.length; c2++) drawList.push({ type: 'car', z: cars[c2].z, ref: cars[c2] });
+    drawList.sort(function (a, b) { return a.z - b.z; });
+
+    for (var d = 0; d < drawList.length; d++) {
+      var item = drawList[d];
+      if (item.type === 'prop') drawSceneryProp(item.ref);
+      else if (item.type === 'star') drawStarPickup(item.ref);
+      else drawTrafficCar(item.ref);
+    }
+    ctx.restore();
+  }
+
+  updateHud();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -149,6 +149,33 @@ export const CatalogItemArt: React.FC<{ item: CatalogItem; size?: number; sway?:
           <circle cx="50" cy="48" r="4" fill={item.secondaryHex} />
         </g>
       )}
+      {item.shape === 'minigame' && (
+        <g>
+          <rect x="8" y="18" width="48" height="30" rx="12" fill={item.primaryHex} stroke={item.secondaryHex} strokeWidth="2.5" />
+          <rect x="21" y="23" width="22" height="14" rx="4" fill="#FFFBEB" />
+          <rect x="13" y="29" width="6" height="2" rx="1" fill="#FFFFFF" />
+          <rect x="15" y="27" width="2" height="6" rx="1" fill="#FFFFFF" />
+          <circle cx="48" cy="28" r="2.2" fill="#FDE047" />
+          <circle cx="45" cy="34" r="2.2" fill="#FFFFFF" />
+          {item.id === 'game_brot_alarm' && (
+            <rect x="26" y="27" width="12" height="7" rx="3.5" fill="#D97706" />
+          )}
+          {item.id === 'game_koi_teich' && (
+            <path d="M25 31 Q29 26 33 30 T39 29" fill="none" stroke="#0D9488" strokeWidth="2.5" strokeLinecap="round" />
+          )}
+          {item.id === 'game_sternen_schleuder' && (
+            <polygon points="32,24 36,34 32,32 28,34" fill="#7C3AED" />
+          )}
+          {item.id === 'game_kloetzchen_flitzer' && (
+            <g>
+              <rect x="25" y="28" width="14" height="6" rx="2" fill="#EF4444" />
+              <rect x="27" y="25" width="10" height="4" rx="1.5" fill="#93C5FD" />
+              <circle cx="28" cy="34.5" r="1.5" fill="#0F172A" />
+              <circle cx="36" cy="34.5" r="1.5" fill="#0F172A" />
+            </g>
+          )}
+        </g>
+      )}
     </svg>
   );
 };

@@ -8,7 +8,8 @@ export type CatalogCategory =
   | 'hat'
   | 'cape'
   | 'backpack'
-  | 'hopEffect';
+  | 'hopEffect'
+  | 'minigame';
 
 export interface CatalogItem {
   id: string;
@@ -44,8 +45,21 @@ export interface CatalogItem {
     | 'cap'
     | 'cape'
     | 'backpack'
-    | 'effect';
+    | 'effect'
+    | 'minigame';
   description: string;
+}
+
+export interface MinigameSpec {
+  id: string;
+  catalogItemId: string;
+  title: string;
+  subtitle: string;
+  price: number;
+  fileName: string;
+  accentHex: string;
+  surfaceHex: string;
+  badgeEmoji: string;
 }
 
 export interface AlbumSticker {
@@ -143,6 +157,59 @@ export const CATALOG_ITEMS: CatalogItem[] = [
   // Hüpf-Effekte (2)
   { id: 'fx_sparkle', name: 'Glitzer-Spur', category: 'hopEffect', price: 95, primaryHex: '#FACC15', secondaryHex: '#38BDF8', shape: 'effect', description: 'Kleine Sterne glitzern beim Hüpfen.' },
   { id: 'fx_rainbow', name: 'Regenbogen-Staub', category: 'hopEffect', price: 260, primaryHex: '#EC4899', secondaryHex: '#22C55E', shape: 'effect', description: 'Bunte Klötzchen-Funken bei jedem Sprung!' },
+
+  // Freischaltbare Minispiele (4)
+  { id: 'game_brot_alarm', name: 'Brot-Alarm!', category: 'minigame', price: 100, primaryHex: '#F97316', secondaryHex: '#B45309', shape: 'minigame', description: 'Fang Brot, Brezeln & Baguettes im Korb – Vorsicht vor den Socken!' },
+  { id: 'game_koi_teich', name: 'Koi-Teich am Mittag', category: 'minigame', price: 150, primaryHex: '#14B8A6', secondaryHex: '#0F766E', shape: 'minigame', description: 'Ruhiger Wasserteich: Tipp ins Wasser und füttere freundliche Kois.' },
+  { id: 'game_sternen_schleuder', name: 'Sternen-Schleuder', category: 'minigame', price: 150, primaryHex: '#8B5CF6', secondaryHex: '#4C1D95', shape: 'minigame', description: 'Schleudere deine Rakete um Planeten und sammle funkelnde Sterne!' },
+  { id: 'game_kloetzchen_flitzer', name: 'Klötzchen-Flitzer', category: 'minigame', price: 150, primaryHex: '#2563EB', secondaryHex: '#1D4ED8', shape: 'minigame', description: 'Flitze über die sonnige Allee, überhole Autos und weiche dem Gegenverkehr aus!' },
+];
+
+export const MINIGAMES: MinigameSpec[] = [
+  {
+    id: 'brot_alarm',
+    catalogItemId: 'game_brot_alarm',
+    title: 'Brot-Alarm!',
+    subtitle: 'Fang Gebäck mit dem Korb & weiche Socken aus',
+    price: 100,
+    fileName: 'brot-alarm.html',
+    accentHex: '#E0662B',
+    surfaceHex: '#FFF7ED',
+    badgeEmoji: '🍞',
+  },
+  {
+    id: 'koi_teich',
+    catalogItemId: 'game_koi_teich',
+    title: 'Koi-Teich am Mittag',
+    subtitle: 'Entspannter Wasserteich mit Kois zum Füttern',
+    price: 150,
+    fileName: 'koi-teich.html',
+    accentHex: '#0D9488',
+    surfaceHex: '#F0FDFA',
+    badgeEmoji: '🐟',
+  },
+  {
+    id: 'sternen_schleuder',
+    catalogItemId: 'game_sternen_schleuder',
+    title: 'Sternen-Schleuder',
+    subtitle: '80 Galaxie-Rätsel mit Schwerkraft & Sternen',
+    price: 150,
+    fileName: 'sternen-schleuder.html',
+    accentHex: '#7C3AED',
+    surfaceHex: '#F5F3FF',
+    badgeEmoji: '🚀',
+  },
+  {
+    id: 'kloetzchen_flitzer',
+    catalogItemId: 'game_kloetzchen_flitzer',
+    title: 'Klötzchen-Flitzer',
+    subtitle: 'Überholen & Gegenverkehr meiden auf der Alpen-Allee',
+    price: 150,
+    fileName: 'kloetzchen-flitzer.html',
+    accentHex: '#2563EB',
+    surfaceHex: '#EFF6FF',
+    badgeEmoji: '🏎️',
+  },
 ];
 
 const STICKER_EXPRESSIONS = [
@@ -624,4 +691,9 @@ export function findSticker(id: string | null | undefined): AlbumSticker | undef
 export function findPuzzlePicture(id: string | null | undefined): PuzzlePicture | undefined {
   if (!id) return undefined;
   return PUZZLE_PICTURES.find((p) => p.id === id);
+}
+
+export function findMinigame(idOrCatalogId: string | null | undefined): MinigameSpec | undefined {
+  if (!idOrCatalogId) return undefined;
+  return MINIGAMES.find((g) => g.id === idOrCatalogId || g.catalogItemId === idOrCatalogId);
 }
